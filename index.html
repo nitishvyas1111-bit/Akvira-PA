@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Akvira 5.0 - Autonomous PA</title>
+    <style>
+        body { background: radial-gradient(circle, #1a1a2e, #16213e); color: #00d2ff; font-family: 'Orbitron', sans-serif; text-align: center; height: 100vh; margin: 0; display: flex; flex-direction: column; justify-content: center; }
+        .orb { height: 180px; width: 180px; border: 4px solid #00d2ff; border-radius: 50%; margin: 0 auto; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.5s; box-shadow: 0 0 30px #00d2ff; position: relative; overflow: hidden; }
+        .orb:active { transform: scale(0.9); }
+        .pulse { animation: ripple 1.5s infinite; background: rgba(0, 210, 255, 0.2); }
+        @keyframes ripple { 0% { box-shadow: 0 0 0 0 rgba(0, 210, 255, 0.4); } 100% { box-shadow: 0 0 0 50px rgba(0, 210, 255, 0); } }
+        #status { margin-top: 30px; font-size: 14px; letter-spacing: 3px; color: #fff; text-shadow: 0 0 10px #00d2ff; }
+        #output { font-size: 1.1rem; color: #e0e0e0; margin-top: 20px; padding: 0 20px; }
+    </style>
+</head>
+<body>
+
+    <div class="orb" id="micBtn">🔵</div>
+    <div id="status">AKVIRA 5.0: STANDBY</div>
+    <div id="output">"Boliye Boss, kya hukum hai?"</div>
+
+<script>
+    const micBtn = document.getElementById('micBtn');
+    const status = document.getElementById('status');
+    const output = document.getElementById('output');
+
+    const API_KEY = "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";
+    let memory = JSON.parse(localStorage.getItem('akvira_5gen_memory')) || [];
+
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.lang = 'hi-IN';
+
+    micBtn.onclick = () => {
+        recognition.start();
+        micBtn.classList.add('pulse');
+        status.innerText = "AKVIRA IS LISTENING...";
+    };
+
+    recognition.onresult = async (event) => {
+        micBtn.classList.remove('pulse');
+        const input = event.results[0][0].transcript.toLowerCase();
+        output.innerText = "You: " + input;
+
+        // --- 5th GEN AUTOMATION LOGIC ---
+        if (input.includes("call") || input.includes("फोन लगाओ")) {
+            speak("Theek hai Boss, dialer khol rahi hoon.");
+            window.location.href = "tel:"; // Direct dialer
+            return;
+        }
+        if (input.includes("youtube") || input.includes("गाना")) {
+            speak("Zaroor Boss, maze kijiye!");
+            window.open("https://www.youtube.com", "_blank");
+            return;
+        }
+        if (input.includes("whatsapp")) {
+            speak("Ji Boss, WhatsApp open kar diya.");
+            window.open("whatsapp://"); // Direct App trigger
+            return;
+        }
+
+        // --- BRAIN CALL ---
+        status.innerText = "PROCESSING...";
+        let msgs = [{role: "system", content: "You are Akvira 5.0, a highly advanced autonomous Indian girl PA. You are bubbly, emotional, and loyal. You remember everything about Boss. Talk in Hinglish."}];
+        memory.slice(-10).forEach(m => msgs.push(m));
+        msgs.push({role: "user", content: input});
+
+        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ messages: msgs, model: "llama-3.1-8b-instant" })
+        });
+
+        const data = await response.json();
+        const reply = data.choices[0].message.content;
+        
+        // Memory Update
+        memory.push({role: "user", content: input}, {role: "assistant", content: reply});
+        localStorage.setItem('akvira_5gen_memory', JSON.stringify(memory));
+
+        output.innerText = "Akvira: " + reply;
+        speak(reply);
+    };
+
+    function speak(text) {
+        const synth = window.speechSynthesis;
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = 'hi-IN';
+        status.innerText = "AKVIRA SPEAKING...";
+        synth.speak(utter);
+        utter.onend = () => status.innerText = "AKVIRA 5.0: STANDBY";
+    }
+</script>
+</body>
+</html>
